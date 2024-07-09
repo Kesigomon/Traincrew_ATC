@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "@prisma/client": "5.16.1",
+    "prisma": "^5.16.1",
+    "socket.io": "^4.7.5"
+  },
+  "devDependencies": {
+    "@socket.io/admin-ui": "^0.5.1",
+    "@types/node": "^20.14.10",
+    "typescript": "^5.5.3"
+  },
+  "scripts": {
+    "build": "tsc"
+  }
+}

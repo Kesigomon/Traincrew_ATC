@@ -1,0 +1,23 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Closure {
+  name      String  @id @db.VarChar(100)
+  direction Int
+  order     Int
+  distance  Int
+  diaName   String?
+
+  @@index([direction, order], type: BTree)
+  @@index([diaName], type: Hash)
+  @@map("closure")
+}
