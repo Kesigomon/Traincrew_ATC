@@ -11,13 +11,36 @@ datasource db {
 }
 
 model Closure {
-  name      String  @id @db.VarChar(100)
-  direction Int
-  order     Int
-  distance  Int
-  diaName   String?
+  name    String  @id @db.VarChar(100)
+  diaName String?
+  routes  Route[]
 
-  @@index([direction, order], type: BTree)
   @@index([diaName], type: Hash)
   @@map("closure")
+}
+
+model ClosureDistance {
+  from     String
+  to       String
+  distance Int
+
+  @@id([from, to])
+  @@map("closure_distance")
+}
+
+model Route {
+  diaName  String    @id @db.VarChar(20)
+  closures Closure[]
+
+  @@map("route")
+}
+
+model ClosureOnRoutes {
+  closureName String @db.VarChar(100)
+  diaName     String @db.VarChar(20)
+  index       BigInt
+
+  @@id([closureName, diaName])
+  @@unique([closureName, diaName, index])
+  @@map("closure_on_routes")
 }
