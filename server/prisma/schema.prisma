@@ -10,37 +10,64 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model Closure {
-  name    String  @id @db.VarChar(100)
-  diaName String?
-  routes  Route[]
-
-  @@index([diaName], type: Hash)
-  @@map("closure")
+enum Direction {
+  UP
+  DOWN
 }
 
-model ClosureDistance {
-  from     String
-  to       String
-  distance Int
-
-  @@id([from, to])
-  @@map("closure_distance")
+enum SignalType {
+  ONE // R
+  TWO_A // R, Y
+  TWO_B // R, G
+  THREE_A // R, YY, Y
+  THREE_B // R, Y, G
+  FOUR_A // R, YY, Y, G
+  FOUR_B // R, Y, YG, G
+  FIVE // R, YY, Y, YG, G
 }
 
-model Route {
-  diaName  String    @id @db.VarChar(20)
-  closures Closure[]
-
-  @@map("route")
+enum StationStatus {
+  ROUTE_CLOSED // 進路未開通
+  ROUTE_OPENED // 進路開通
+  ROUTE_ENTERING // 進路進入中
+  ROUTE_ENTERED // 進路進入完了
 }
 
-model ClosureOnRoutes {
-  closureName String @db.VarChar(100)
-  diaName     String @db.VarChar(20)
-  index       BigInt
+model Signal {
+  name                  String            @id @db.VarChar(100)
+  order                 Int
+  direction             Direction
+  type                  SignalType
+  isClosure             Boolean
+  nextSignal            NextSignal[]      @relation("nextSignal")
+  beforeSignal          NextSignal[]      @relation("beforeSignal")
+  nextEnterSignal       NextEnterSignal[] @relation("nextEnterSignal")
+  beforeNextEnterSignal NextEnterSignal[] @relation("beforeNextEnterSignal")
 
-  @@id([closureName, diaName])
-  @@unique([closureName, diaName, index])
-  @@map("closure_on_routes")
+  diaName       String?       @db.VarChar(100)
+  stationStatus StationStatus
+
+  @@index([direction, order])
+}
+
+model NextSignal {
+  id             Int    @id @default(autoincrement())
+  signalName     String @db.VarChar(100)
+  nextSignalName String @db.VarChar(100)
+  signal         Signal @relation(name: "nextSignal", fields: [signalName], references: [name])
+  nextSignal     Signal @relation(name: "beforeSignal", fields: [nextSignalName], references: [name])
+
+  @@unique([signalName, nextSignalName])
+  @@index([signalName], type: Hash)
+}
+
+model NextEnterSignal {
+  id             Int    @id @default(autoincrement())
+  signalName     String @db.VarChar(100)
+  nextSignalName String @db.VarChar(100)
+  signal         Signal @relation(name: "nextEnterSignal", fields: [signalName], references: [name])
+  nextSignal     Signal @relation(name: "beforeNextEnterSignal", fields: [nextSignalName], references: [name])
+
+  @@unique([signalName, nextSignalName])
+  @@index([signalName], type: Hash)
 }

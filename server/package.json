@@ -10,6 +10,8 @@
     "typescript": "^5.5.3"
   },
   "scripts": {
-    "build": "tsc"
+    "build": "npm run build:tsc && npm run build:prisma",
+    "build:tsc": "tsc",
+    "build:prisma": "prisma generate"
   }
 }
