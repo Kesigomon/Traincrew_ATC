@@ -8,7 +8,6 @@ import {
   SignalPhase, SignalPhaseList
 } from './types';
 import {NextSignal, PrismaClient, Signal, SignalType, StationStatus} from '@prisma/client';
-import {instrument} from '@socket.io/admin-ui';
 
 const httpServer = createServer();
 const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {});
@@ -173,10 +172,5 @@ io.on('connection', (socket) => {
   });
 });
 
-
-instrument(io, {
-  auth: false,
-  mode: 'development',
-});
 
 httpServer.listen(3000);
