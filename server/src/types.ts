@@ -10,6 +10,7 @@ export interface ServerToClientEvents {
   elapsed: (data: ElapsedData) => void;
   getRouteResult: (data: TrackCircuitInfo[]) => void;
   routeOpenResult: (data: string) => void;
+  getAllSignalResult: (data: SignalInfo[]) => void;
 }
 
 export const SignalPhaseList = ['R', 'YY', 'Y', 'YG', 'G'] as const;
@@ -28,6 +29,10 @@ export type TrackCircuitInfo = {
   signalType?: string,
 }
 
+export type SignalInfo = ElapsedData & {
+  diaName: string | null;
+}
+
 export interface ClientToServerEvents {
   // 行路情報取得
   getRoute: (diaName: string) => void;
@@ -41,6 +46,8 @@ export interface ClientToServerEvents {
   routeOpen: (signalName: string) => void;
   // フレーム処理
   elapse: (data: CommonData) => void;
+  // 全信号機情報取得
+  getAllSignal: () => void;
 }
 
 export interface InterServerEvents {

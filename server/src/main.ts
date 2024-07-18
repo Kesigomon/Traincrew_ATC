@@ -39,7 +39,6 @@ const calcSignalPhase = async (signalName: string, diaName: string): Promise<[Si
       nextSignal: true
     }
   });
-  signalsArray[0].nextSignal
   const signals = new Map(signalsArray.map(signal => [signal.name, signal]));
   let signalPhase: SignalPhaseExtra = calcOneSignalPhase(signalName, diaName, signals);
   if (targetSignal.name.includes('入換') && signalPhase === 'G') {
@@ -48,25 +47,53 @@ const calcSignalPhase = async (signalName: string, diaName: string): Promise<[Si
   return [signalPhase, targetSignal.type];
 }
 
+const calcAllSignalPhase = async () => {
+  const signalsArray = await prisma.signal.findMany({
+    orderBy: [{direction: 'asc'}, {order: 'asc'}],
+    include: {
+      nextSignal: true
+    }
+  });
+  const signals = new Map(signalsArray.map(signal => [signal.name, signal]));
+  const cache = new Map<string, SignalPhase>();
+  return signalsArray.map(signal => {
+    const signalPhase = calcOneSignalPhase(signal.name, 'hoge', signals, cache);
+    return {
+      signalName: signal.name,
+      signalPhase,
+      signalType: signal.type,
+      diaName: signal.diaName
+    }
+  });
+}
+
 const calcOneSignalPhase = (
     signalName: string,
     diaName: string,
-    signals: Map<string, Signal & { nextSignal: NextSignal[] }>
+    signals: Map<string, Signal & { nextSignal: NextSignal[] }>,
+    cache: Map<string, SignalPhase> = new Map<string, SignalPhase>()
 ): SignalPhase => {
   const R: SignalPhase = 'R';
-  const targetSignal = signals.get(signalName);
-  // 信号情報がない(つまり、再起しきった) or 自分以外の在線がいる場合は停止信号
-  if (targetSignal === undefined || targetSignal.diaName !== null && targetSignal.diaName !== diaName) {
-    return 'R'
+  const cachedValue = cache.get(signalName);
+  if (cachedValue) {
+    return cachedValue;
   }
-  // 閉塞信号機以外(場内、出発、入換)の場合の処理
-  // 進路が開通していない場合は停止信号
-  if (!targetSignal.isClosure && !calcStationSignal(targetSignal, diaName)) {
+  const targetSignal = signals.get(signalName);
+  if (
+      // 信号情報がない(つまり、再起しきった)
+      targetSignal === undefined
+      // 自分以外の在線がいる場合
+      || targetSignal.diaName !== null && targetSignal.diaName !== diaName
+      // 場内、出発、入換信号機の場合に、進路が開通していない場合
+      || (!targetSignal.isClosure && !calcStationSignal(targetSignal, diaName))
+  ) {
+    cache.set(signalName, R);
     return 'R'
   }
   // 再帰的に次の信号の現示を計算
   const nextSignalMaxPhase = targetSignal.nextSignal.reduce<SignalPhase>((acc, next) => {
-    const nextSignalPhase = calcOneSignalPhase(next.nextSignalName, diaName, signals);
+    const nextSignalPhase = calcOneSignalPhase(next.nextSignalName, diaName, signals, cache);
+    cache.set(next.nextSignalName, nextSignalPhase);
     const accIndex = SignalPhaseList.indexOf(acc)
     const nextIndex = SignalPhaseList.indexOf(nextSignalPhase)
     return SignalPhaseList[Math.max(accIndex, nextIndex)];
@@ -237,6 +264,14 @@ io.on('connection', (socket) => {
   socket.on('routeOpen', async (signalName) => {
     const result = await openSignal(signalName);
     socket.emit('routeOpenResult', result);
+  });
+  socket.on('getAllSignal', async () => {
+    const result = (await calcAllSignalPhase())
+        .map(r => ({
+          ...r,
+          signalType: convertSignalType(r.signalType) ?? ''
+        }));
+    socket.emit('getAllSignalResult', result);
   });
   socket.on('elapse', async ({diaName, signalName}) => {
     const result = await calcSignalPhase(signalName, diaName);
