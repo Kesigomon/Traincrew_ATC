@@ -5,23 +5,28 @@ import {
   ClientToServerEvents,
   InterServerEvents,
   SocketData,
-  SignalPhase, SignalPhaseList
+  SignalPhase, SignalPhaseList, TrackCircuitInfo, SignalPhaseExtra
 } from './types';
 import {NextSignal, PrismaClient, Signal, SignalType, StationStatus} from '@prisma/client';
+import * as fs from 'node:fs';
+
+process.on('unhandledRejection', (e) => {
+  console.trace(e)
+});
 
 const httpServer = createServer();
 const io = new Server<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>(httpServer, {});
 const prisma = new PrismaClient();
 
 
-const calcSignalPhase = async (signalName: string, diaName: string): Promise<SignalPhase | null> => {
+const calcSignalPhase = async (signalName: string, diaName: string): Promise<[SignalPhaseExtra, SignalType] | null> => {
   const nextClosureLength = 6;
 
   const targetSignal = await prisma.signal.findUnique({
     where: {name: signalName}
   });
   if (targetSignal === null) {
-    return null;
+    return null
   }
 
   const signalsArray = await prisma.signal.findMany({
@@ -36,7 +41,11 @@ const calcSignalPhase = async (signalName: string, diaName: string): Promise<Sig
   });
   signalsArray[0].nextSignal
   const signals = new Map(signalsArray.map(signal => [signal.name, signal]));
-  return calcOneSignalPhase(signalName, diaName, signals);
+  let signalPhase: SignalPhaseExtra = calcOneSignalPhase(signalName, diaName, signals);
+  if (targetSignal.name.includes('入換') && signalPhase === 'G') {
+    signalPhase = 'SwitchG'
+  }
+  return [signalPhase, targetSignal.type];
 }
 
 const calcOneSignalPhase = (
@@ -137,18 +146,83 @@ const upperSignalPhase = (phase: SignalPhase, signalType: SignalType) => {
   return phases[Math.min(upperIndex, phases.length - 1)];
 }
 
-io.on('connection', (socket) => {
-  socket.on('getRoute', async (diaName) => {
-    // Todo: 列車番号を受け取り、その列車の経路を返す
-    // Todo: 信号の種類を返す
+const convertSignalType = (signalType: SignalType) => {
+  if (signalType === 'ONE') {
+    return ''
+  }
+  if (signalType === 'TWO_A') {
+    return 'MAIN_2Y'
+  }
+  if (signalType === 'TWO_B') {
+    return 'Switch_2'
+  }
+  if (signalType === 'THREE_A') {
+    return 'Main_4yyng'
+  }
+  if (signalType === 'THREE_B') {
+    return 'Main_3nb'
+  }
+  if (signalType === 'FOUR_A') {
+    return 'Main_4yy'
+  }
+  if (signalType === 'FOUR_B') {
+    return 'Main_4yg'
+  }
+  if (signalType === 'FIVE') {
+    return 'Main_5'
+  }
+}
+
+const getRoute = async (diaName: string) => {
+  // 正しい列車番号か確認(なんでもOKにすると任意パス取れるのでその対策)
+  const pattern = /^回?\d{3,4}[A-Z]?$/
+  if (!pattern.test(diaName)) {
+    return '列車番号が不正です';
+  }
+  const content = await fs.promises.readFile(`${__dirname}/../routes/${diaName}.csv`, 'utf-8');
+  const routes = content.split('\n')
+      .slice(1)
+      .map(row => {
+        const cells = row.split(',');
+        const result: TrackCircuitInfo = {
+          name: cells[1],
+          startMeter: parseFloat(cells[2]),
+          endMeter: parseFloat(cells[3]),
+        }
+        return result;
+      });
+  const names = routes.map(route => route.name);
+  const singals = await prisma.signal.findMany({
+    where: {name: {in: names}},
+    select: {name: true, type: true}
   });
-  socket.on('enterClosure', async ({diaName, signalName}) => {
+  const signalMap = new Map(singals.map(signal => [signal.name, signal.type]));
+  for (const route of routes) {
+    const signalType = signalMap.get(route.name);
+    if (signalType !== undefined) {
+      route.signalType = convertSignalType(signalType);
+    }
+  }
+  return routes;
+}
+
+io.on('connection', (socket) => {
+  console.log(`ip: ${socket.handshake.address} connected`);
+  socket.on('getRoute', async (diaName) => {
+    const result = await getRoute(diaName);
+    if (typeof result === 'string') {
+      console.error(result);
+      return;
+    }
+    socket.emit('getRouteResult', result);
+  });
+  socket.on('enterSignal', async ({diaName, signalName}) => {
     await prisma.signal.updateMany({
       where: {name: signalName},
       data: {diaName: diaName, stationStatus: StationStatus.ROUTE_ENTERING}
     });
   });
-  socket.on('leaveClosure', async ({diaName, signalName}) => {
+  socket.on('leaveSignal', async ({diaName, signalName}) => {
     await prisma.signal.updateMany({
       where: {name: signalName, diaName: diaName},
       data: {diaName: null, stationStatus: StationStatus.ROUTE_CLOSED}
@@ -161,14 +235,17 @@ io.on('connection', (socket) => {
     });
   });
   socket.on('routeOpen', async (signalName) => {
-    await openSignal(signalName);
+    const result = await openSignal(signalName);
+    socket.emit('routeOpenResult', result);
   });
   socket.on('elapse', async ({diaName, signalName}) => {
-    const signalPhase = await calcSignalPhase(signalName, diaName);
-    if (signalPhase === null) {
-      return;
+    const result = await calcSignalPhase(signalName, diaName);
+    const [signalPhase, signalType] = result ?? ['N', ''];
+    let signalTypeStr = '';
+    if (signalType !== '') {
+      signalTypeStr = convertSignalType(signalType) ?? '';
     }
-    socket.emit('elapsed', {signalName, signalPhase});
+    socket.emit('elapsed', {signalName, signalType: signalTypeStr, signalPhase});
   });
 });
 

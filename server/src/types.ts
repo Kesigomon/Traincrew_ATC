@@ -1,35 +1,40 @@
 import {SignalType} from '@prisma/client';
 
-
 export type ElapsedData = {
   signalName: string;
-  signalPhase: SignalPhase;
+  signalPhase: SignalPhaseExtra;
+  signalType: string;
 }
 
 export interface ServerToClientEvents {
   elapsed: (data: ElapsedData) => void;
+  getRouteResult: (data: TrackCircuitInfo[]) => void;
+  routeOpenResult: (data: string) => void;
 }
 
 export const SignalPhaseList = ['R', 'YY', 'Y', 'YG', 'G'] as const;
 export type SignalPhase = typeof SignalPhaseList[number];
+export type SignalPhaseExtra = SignalPhase | 'SwitchG' | 'N'
 
 export type CommonData = {
   diaName: string;
   signalName: string;
 }
 
-export type StopLimitation = {
-  closureName: string;
-  stopLimit: number;
+export type TrackCircuitInfo = {
+  name: string,
+  startMeter: number,
+  endMeter: number,
+  signalType?: string,
 }
 
 export interface ClientToServerEvents {
   // 行路情報取得
   getRoute: (diaName: string) => void;
   // 在線
-  enterClosure: (data: CommonData) => void;
+  enterSignal: (data: CommonData) => void;
   // 離線
-  leaveClosure: (data: CommonData) => void;
+  leaveSignal: (data: CommonData) => void;
   // 進入完了
   enteringComplete: (data: CommonData) => void;
   // 進路開通
