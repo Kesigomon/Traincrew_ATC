@@ -10,6 +10,7 @@ export interface ServerToClientEvents {
   elapsed: (data: ElapsedData) => void;
   getRouteResult: (data: TrackCircuitInfo[]) => void;
   routeOpenResult: (data: string) => void;
+  routeCloseResult: (data: string) => void;
   getAllSignalResult: (data: SignalInfo[]) => void;
 }
 
@@ -44,6 +45,8 @@ export interface ClientToServerEvents {
   enteringComplete: (data: CommonData) => void;
   // 進路開通
   routeOpen: (signalName: string) => void;
+  // 進路閉鎖
+  routeClose: (signalName: string) => void;
   // フレーム処理
   elapse: (data: CommonData) => void;
   // 全信号機情報取得

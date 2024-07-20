@@ -150,6 +150,25 @@ const openSignal = async (signalName: string): Promise<string> => {
   return '';
 }
 
+const closeSignal = async (signalName: string): Promise<string> => {
+  const signal = await prisma.signal.findUnique({
+    where: {name: signalName},
+  });
+  if (signal === null) {
+    return '信号情報が見つかりませんでした';
+  }
+  // 閉鎖できないステータスの場合閉鎖しない
+  if (signal.stationStatus !== StationStatus.ROUTE_OPENED) {
+    return `該当信号のステータスが開通済みではありません: ${signal.stationStatus}`;
+  }
+  // 進路閉鎖
+  await prisma.signal.update({
+    data: {stationStatus: StationStatus.ROUTE_CLOSED},
+    where: {name: signalName}
+  })
+  return '';
+}
+
 const upperSignalPhase = (phase: SignalPhase, signalType: SignalType) => {
   let phases: SignalPhase[];
   if (signalType === 'TWO_A') {
@@ -264,6 +283,10 @@ io.on('connection', (socket) => {
   socket.on('routeOpen', async (signalName) => {
     const result = await openSignal(signalName);
     socket.emit('routeOpenResult', result);
+  });
+  socket.on('routeClose', async (signalName) => {
+    const result = await closeSignal(signalName);
+    socket.emit('routeCloseResult', result);
   });
   socket.on('getAllSignal', async () => {
     const result = (await calcAllSignalPhase())
