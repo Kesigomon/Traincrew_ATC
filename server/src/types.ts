@@ -1,5 +1,3 @@
-import {SignalType} from '@prisma/client';
-
 export type ElapsedData = {
   signalName: string;
   signalPhase: SignalPhaseExtra;
@@ -10,7 +8,7 @@ export interface ServerToClientEvents {
   elapsed: (data: ElapsedData) => void;
   getRouteResult: (data: TrackCircuitInfo[]) => void;
   routeOpenResult: (data: string) => void;
-  routeCloseResult: (data: string) => void;
+  routeCancelResult: (data: string) => void;
   getAllSignalResult: (data: SignalInfo[]) => void;
 }
 
@@ -46,7 +44,7 @@ export interface ClientToServerEvents {
   // 進路開通
   routeOpen: (signalName: string) => void;
   // 進路閉鎖
-  routeClose: (signalName: string) => void;
+  routeCancel: (signalName: string) => void;
   // フレーム処理
   elapse: (data: CommonData) => void;
   // 全信号機情報取得

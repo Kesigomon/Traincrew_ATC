@@ -9,7 +9,6 @@ import {
 } from './types';
 import {NextSignal, PrismaClient, Signal, SignalType, StationStatus} from '@prisma/client';
 import * as fs from 'node:fs';
-import {sign} from 'node:crypto';
 
 process.on('unhandledRejection', (e) => {
   console.trace(e)
@@ -293,9 +292,9 @@ io.on('connection', (socket) => {
     const result = await openSignal(signalName);
     socket.emit('routeOpenResult', result);
   });
-  socket.on('routeClose', async (signalName) => {
+  socket.on('routeCancel', async (signalName) => {
     const result = await closeSignal(signalName);
-    socket.emit('routeCloseResult', result);
+    socket.emit('routeCancelResult', result);
   });
   socket.on('getAllSignal', async () => {
     const result = (await calcAllSignalPhase())
