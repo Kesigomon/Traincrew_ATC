@@ -9,6 +9,7 @@ import {
 } from './types';
 import {NextSignal, PrismaClient, Signal, SignalType, StationStatus} from '@prisma/client';
 import * as fs from 'node:fs';
+import {sign} from 'node:crypto';
 
 process.on('unhandledRejection', (e) => {
   console.trace(e)
@@ -132,6 +133,9 @@ const openSignal = async (signalName: string): Promise<string> => {
   if (signal === null) {
     return '信号情報が見つかりませんでした';
   }
+  if (signal.stationStatus === StationStatus.ROUTE_OPENED) {
+    return '開通中';
+  }
   // 開通できないステータスの場合開通しない
   if (signal.stationStatus !== StationStatus.ROUTE_CLOSED) {
     return `該当信号のステータスが未開通ではありません: ${signal.stationStatus}`;
@@ -158,6 +162,11 @@ const closeSignal = async (signalName: string): Promise<string> => {
     return '信号情報が見つかりませんでした';
   }
   // 閉鎖できないステータスの場合閉鎖しない
+  if (signal.stationStatus === StationStatus.ROUTE_CLOSED) {
+    return '閉鎖中';
+  } else if (signal.stationStatus === StationStatus.ROUTE_ENTERING) {
+    return '進入中';
+  }
   if (signal.stationStatus !== StationStatus.ROUTE_OPENED) {
     return `該当信号のステータスが開通済みではありません: ${signal.stationStatus}`;
   }
