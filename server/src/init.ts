@@ -298,11 +298,17 @@ const calcDirection = (name: string) => {
 }
 
 const calcSignalType = (name: string) => {
-  if (name == '下り閉塞7') {
+  if (name === '下り閉塞7') {
     return SignalType.THREE_A;
   }
   if (name === '新野崎下り場内3L') {
     return SignalType.FIVE;
+  }
+  if (name === '浜園下り場内2L') {
+    return SignalType.FOUR_B;
+  }
+  if (name === '江ノ原検車区下り出発2L' || name === '江ノ原検車区上り出発2R' || name === '駒野下り出発4L') {
+    return SignalType.THREE_B;
   }
   if (name.includes('入換')) {
     return SignalType.TWO_B;
