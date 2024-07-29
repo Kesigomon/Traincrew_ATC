@@ -1,3 +1,5 @@
+import {StationStatus} from '@prisma/client';
+
 export type ElapsedData = {
   signalName: string;
   signalPhase: SignalPhaseExtra;
@@ -30,6 +32,8 @@ export type TrackCircuitInfo = {
 
 export type SignalInfo = ElapsedData & {
   diaName: string | null;
+  isClosure: boolean;
+  stationStatus: StationStatus
 }
 
 export interface ClientToServerEvents {

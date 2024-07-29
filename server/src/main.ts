@@ -62,7 +62,9 @@ const calcAllSignalPhase = async () => {
       signalName: signal.name,
       signalPhase,
       signalType: signal.type,
-      diaName: signal.diaName
+      diaName: signal.diaName,
+      isClosure: signal.isClosure,
+      stationStatus: signal.stationStatus
     }
   });
 }
@@ -83,9 +85,12 @@ const calcOneSignalPhase = (
       // 信号情報がない(つまり、再起しきった)
       targetSignal === undefined
       // 自分以外の在線がいる場合
-      || targetSignal.diaName !== null && targetSignal.diaName !== diaName
+      || (targetSignal.diaName !== null && targetSignal.diaName !== diaName)
       // 場内、出発、入換信号機の場合に、進路が開通していない場合
-      || (!targetSignal.isClosure && !calcStationSignal(targetSignal, diaName))
+      || (!targetSignal.isClosure
+          && !targetSignal.name.startsWith('浜園')
+          && !targetSignal.name.startsWith('駒野')
+          && !calcStationSignal(targetSignal, diaName))
   ) {
     cache.set(signalName, R);
     return 'R'
@@ -132,6 +137,7 @@ const openSignal = async (signalName: string): Promise<string> => {
   if (signal === null) {
     return '信号情報が見つかりませんでした';
   }
+  /*
   if (signal.stationStatus === StationStatus.ROUTE_OPENED) {
     return '開通中';
   }
@@ -145,6 +151,7 @@ const openSignal = async (signalName: string): Promise<string> => {
       return `${enterSignal.nextSignalName}のステータスが未開通または進入完了ではありません: ${stationStatus}`;
     }
   }
+  */
   // 進路開通
   await prisma.signal.update({
     data: {stationStatus: StationStatus.ROUTE_OPENED},
@@ -178,26 +185,27 @@ const closeSignal = async (signalName: string): Promise<string> => {
 }
 
 const upperSignalPhase = (phase: SignalPhase, signalType: SignalType) => {
-  let phases: SignalPhase[];
+  let _phases: SignalPhase[];
   if (signalType === 'TWO_A') {
-    phases = ['R', 'Y']
+    _phases = ['R', 'Y']
   } else if (signalType === 'TWO_B') {
-    phases = ['R', 'G']
+    _phases = ['R', 'G']
   } else if (signalType === 'THREE_A') {
-    phases = ['R', 'YY', 'Y']
+    _phases = ['R', 'YY', 'Y']
   } else if (signalType === 'THREE_B') {
-    phases = ['R', 'Y', 'G']
+    _phases = ['R', 'Y', 'G']
   } else if (signalType === 'FOUR_A') {
-    phases = ['R', 'YY', 'Y', 'G']
+    _phases = ['R', 'YY', 'Y', 'G']
   } else if (signalType === 'FOUR_B') {
-    phases = ['R', 'Y', 'YG', 'G']
+    _phases = ['R', 'Y', 'YG', 'G']
   } else if (signalType === 'FIVE') {
-    phases = ['R', 'YY', 'Y', 'YG', 'G']
+    _phases = ['R', 'YY', 'Y', 'YG', 'G']
   } else {
     return 'R'
   }
-  const upperIndex = phases.indexOf(phase) + 1;
-  return phases[Math.min(upperIndex, phases.length - 1)];
+  const phases = new Set(_phases);
+  const index = SignalPhaseList.indexOf(phase);
+  return SignalPhaseList.slice(index + 1).find(p => phases.has(p)) ?? _phases[_phases.length - 1];
 }
 
 const convertSignalType = (signalType: SignalType) => {
@@ -305,6 +313,7 @@ io.on('connection', (socket) => {
     socket.emit('getAllSignalResult', result);
   });
   socket.on('elapse', async ({diaName, signalName}) => {
+    // Todo: 再起動時に在線が残るので、今いる位置と前の位置以外の在線は全部消す
     const result = await calcSignalPhase(signalName, diaName);
     const [signalPhase, signalType] = result ?? ['N', ''];
     let signalTypeStr = '';
