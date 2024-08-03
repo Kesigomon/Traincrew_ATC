@@ -293,7 +293,7 @@ io.on('connection', (socket) => {
   socket.on('enteringComplete', async ({diaName, signalName}) => {
     await prisma.signal.updateMany({
       where: {name: signalName},
-      data: {stationStatus: StationStatus.ROUTE_ENTERED}
+      data: {diaName, stationStatus: StationStatus.ROUTE_ENTERED}
     });
   });
   socket.on('routeOpen', async (signalName) => {
