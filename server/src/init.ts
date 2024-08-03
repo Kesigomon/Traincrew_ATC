@@ -371,23 +371,24 @@ const main = async () => {
       order = 1;
     }
     const type = calcSignalType(name);
-    const stationStatus = StationStatus.ROUTE_CLOSED;
     return {
       name,
       order,
       direction,
       type,
       isClosure,
-      stationStatus,
     }
   });
 
   await prisma.nextEnterSignal.deleteMany();
   await prisma.nextSignal.deleteMany();
-  await prisma.signal.deleteMany();
-  await prisma.signal.createMany({
-    data: signalData,
-  });
+  await Promise.allSettled(signalData.map(async (data) => {
+    await prisma.signal.upsert({
+      where: {name: data.name},
+      update: data,
+      create: {...data, stationStatus: 'ROUTE_CLOSED'}
+    });
+  }));
   await prisma.nextSignal.createMany({data: calcNextSignalData()});
   await prisma.nextEnterSignal.createMany({data: calcNextEnterSignalData()});
 };
