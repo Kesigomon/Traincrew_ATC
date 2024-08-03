@@ -300,12 +300,15 @@ const calcDirection = (name: string) => {
   return Direction.UP;
 }
 
-const calcSignalType = (name: string) => {
+const calcSignalType = (name: SignalNames) => {
   if (name === '下り閉塞7') {
     return SignalType.THREE_A;
   }
   if (name === '新野崎下り場内3L') {
     return SignalType.FIVE;
+  }
+  if (name.startsWith('大道寺上り場内')) {
+    return SignalType.FOUR_A;
   }
   if (name === '浜園下り場内2L' || name === '浜園上り場内1R') {
     return SignalType.FOUR_B;
