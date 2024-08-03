@@ -51,6 +51,7 @@ const signals = [
   '上り閉塞142',
   '上り閉塞146',
   // 江ノ原
+  '江ノ原検車区上り入線予告',
   '江ノ原検車区上り場内1RA',
   '江ノ原検車区上り場内1RB',
   '江ノ原検車区上り場内1RC',
@@ -75,6 +76,7 @@ const signals = [
   '大道寺下り出発1L',
   '大道寺下り出発2L',
   // 江ノ原信号場
+  '江ノ原検車区下り入線予告',
   '江ノ原検車区下り出発2L',
   '江ノ原検車区下り出発3L',
   '江ノ原検車区下り場内1LA',
@@ -118,6 +120,7 @@ const signals = [
   '下り閉塞35',
   '下り閉塞27',
   // 駒野
+  '駒野入線予告',
   '駒野下り場内11LA',
   '駒野下り出発1L',
   '駒野下り出発2L',
@@ -163,6 +166,7 @@ const nextSignals = new Map<SignalNames, SignalNames[]>([
   ['新野崎上り出発11R', ['上り閉塞136']],
   ['新野崎上り出発12R', ['上り閉塞136']],
   ['上り閉塞146', ['江ノ原検車区上り場内1RA', '江ノ原検車区上り場内1RB', '江ノ原検車区上り場内1RC']],
+  ['江ノ原検車区上り出発2R', ['上り閉塞156']],
   ['江ノ原検車区上り場内1RA', ['上り閉塞156']],
   ['上り閉塞156', ['大道寺上り場内1RA', '大道寺上り場内1RB', '大道寺上り場内1RC']],
   ['大道寺上り場内1RA', ['大道寺上り場内2R']],
@@ -287,17 +291,14 @@ const nextEnterSignals = new Map<SignalNames, SignalNames[]>([
   ['館浜下り場内1LD', ['館浜上り出発4R', '館浜下り場内1LA', '館浜下り場内1LB', '館浜下り場内1LC', '館浜4番線']],
 ])
 
-const calcDirection = (name: string) => {
-  /*
+const calcDirection = (name: SignalNames) => {
   if (name.includes('上り') || name.includes('R')) {
     return Direction.UP;
   }
-
-   */
   if (name.includes('下り') || name.includes('L')) {
     return Direction.DOWN;
   }
-  return Direction.UP;
+  return null;
 }
 
 const calcSignalType = (name: SignalNames) => {
@@ -361,16 +362,18 @@ const calcNextEnterSignalData = () => {
 const main = async () => {
   const prisma = new PrismaClient();
   let order = 1;
+  let oldDirection: Direction = Direction.UP;
   const signalData = signals.map((name, index, array) => {
     const isClosure = name.includes('閉塞');
     if (isClosure || (index >= 1 && array[index - 1].includes('閉塞'))) {
       order += 1;
     }
-    const direction = calcDirection(name);
+    const direction = calcDirection(name) ?? oldDirection;
     if (direction === Direction.DOWN && (index >= 1 && calcDirection(array[index - 1]) === Direction.UP)) {
       order = 1;
     }
     const type = calcSignalType(name);
+    oldDirection = direction;
     return {
       name,
       order,
