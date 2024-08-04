@@ -135,7 +135,6 @@ const openSignal = async (signalName: string): Promise<string> => {
   if (signal === null) {
     return '信号情報が見つかりませんでした';
   }
-  /*
   if (signal.stationStatus === StationStatus.ROUTE_OPENED) {
     return '開通中';
   }
@@ -149,7 +148,6 @@ const openSignal = async (signalName: string): Promise<string> => {
       return `${enterSignal.nextSignalName}のステータスが未開通または進入完了ではありません: ${stationStatus}`;
     }
   }
-  */
   // 進路開通
   await prisma.signal.update({
     data: {stationStatus: StationStatus.ROUTE_OPENED},
