@@ -88,8 +88,6 @@ const calcOneSignalPhase = (
       || (targetSignal.diaName !== null && targetSignal.diaName !== diaName)
       // 場内、出発、入換信号機の場合に、進路が開通していない場合
       || (!targetSignal.isClosure
-          && !targetSignal.name.startsWith('浜園')
-          && !targetSignal.name.startsWith('駒野')
           && !calcStationSignal(targetSignal, diaName))
   ) {
     cache.set(signalName, R);
