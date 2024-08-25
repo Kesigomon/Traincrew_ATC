@@ -233,7 +233,7 @@ const convertSignalType = (signalType: SignalType) => {
 
 const getRoute = async (diaName: string) => {
   // 正しい列車番号か確認(なんでもOKにすると任意パス取れるのでその対策)
-  const pattern = /^[回臨]?\d{3,4}[A-Z]?(?:_\d)?$/
+  const pattern = /^[回臨]?\d{3,4}[A-Z]?_\d$/
   if (!pattern.test(diaName)) {
     return '列車番号が不正です';
   }
